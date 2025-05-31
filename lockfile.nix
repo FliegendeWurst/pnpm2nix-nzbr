@@ -75,7 +75,7 @@ rec {
               );
           }
           {
-            case = hasPrefix "/" n;
+            case = true;
             result =
               let
                 name = withoutVersion n;
