@@ -15,19 +15,19 @@ rec {
       splitVersion = name: splitString "@" (head (splitString "(" name));
       getVersion = name: last (splitVersion name);
       withoutVersion = name: concatStringsSep "@" (init (splitVersion name));
-      switch = options:
+      switch = n: v: options:
         if ((length options) == 0)
-        then throw "No matching case found!"
+        then throw "No matching case found, for n=${n} v=${builtins.toJSON v}!"
         else
           if ((head options).case or true)
           then (head options).result
-          else switch (tail options);
+          else switch n v (tail options);
       mkTarball = pkg: contents:
         runCommand "${last (init (splitString "/" (head (splitString "(" pkg))))}.tgz" { } ''
           tar -czf $out -C ${contents} .
         '';
       findTarball = n: v:
-        switch [
+        switch n v [
           {
             case = (v.resolution.type or "") == "git";
             result =
