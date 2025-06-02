@@ -33,6 +33,7 @@ in
     , name ? if version != null then "${pname}-${version}" else pname
     , registry ? "https://registry.npmjs.org"
     , script ? "build"
+    , scriptFull ? null
     , distDir ? "dist"
     , distDirs ? (if workspace == null then [distDir] else (map (c: "${c}/dist") components))
     , distDirIsOut ? true
@@ -102,7 +103,7 @@ in
         ["--recursive" "--stream"] ++
         map (c: "--filter ./${c}") components
       ) + " ";
-      buildScripts = ''
+      buildScripts = if scriptFull != null then scriptFull else ''
         pnpm run ${optionalString isWorkspace filterString}${script}
       '';
       # Flag derived from value computed above, indicating the single dist
