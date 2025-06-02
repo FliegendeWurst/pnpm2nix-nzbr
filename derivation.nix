@@ -137,7 +137,7 @@ in
 
             cp -f ${passthru.patchedLockfileYaml} pnpm-lock.yaml
 
-            pnpm store add ${concatStringsSep " " (unique processResult.dependencyTarballs)}
+            pnpm store add ${concatStringsSep " " (unique passthru.processResult.dependencyTarballs)}
 
             ${concatStringsSep "\n" (
               mapAttrsToList
@@ -187,7 +187,7 @@ in
               processResult = processLockfile { inherit registry noDevDependencies; lockfile = pnpmLockYaml; };
             in
             {
-              inherit attrs;
+              inherit attrs processResult;
 
               patchedLockfile = processResult.patchedLockfile;
               patchedLockfileYaml = writeText "pnpm-lock.yaml" (toJSON passthru.patchedLockfile);
