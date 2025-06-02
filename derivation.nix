@@ -51,6 +51,7 @@ in
     , pnpm ? nodejs.pkgs.pnpm
     , pkg-config ? pkgConfigPkg
     , nodeModulesPreBuild ? ""
+    , preBuild ? ""
     , ...
     }@attrs:
     let
@@ -111,7 +112,7 @@ in
     stdenv.mkDerivation (
       recursiveUpdate
         (rec {
-          inherit src name nativeBuildInputs buildInputs;
+          inherit src name nativeBuildInputs buildInputs preBuild;
 
           strictDeps = true;
 
