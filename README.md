@@ -1,6 +1,7 @@
 # pnpm2nix
 
-> [!Information]
+> [!Important]
+> 
 > This fork supports pnpm 10 and pnpm workspaces.
 
 Provides a `mkPnpmPackage` function that can be used to build a pnpm package with nix.
