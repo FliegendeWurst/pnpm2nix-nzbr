@@ -260,7 +260,7 @@ in
                   cp -r node_modules/. $out/node_modules
                   ${forEachComponent (component: ''
                     mkdir -p $out/"${component}"
-                    cp -r "${component}/node_modules" $out/"${component}/node_modules"
+                    cp -r "${component}/node_modules" $out/"${component}/node_modules" || echo "failed to copy ${component}/node_modules"
                   '')}
 
                   runHook postInstall
