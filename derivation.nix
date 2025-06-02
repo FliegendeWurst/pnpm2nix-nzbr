@@ -3,7 +3,6 @@
 , nodejs
 , jq
 , moreutils
-, rsync
 , pkg-config
 , callPackage
 , writeText
@@ -43,15 +42,12 @@ in
     , buildEnv ? { }
     , noDevDependencies ? false
     , extraNodeModuleSources ? [ ]
-    , copyPnpmStore ? true
     , copyNodeModules ? false
     , extraNativeBuildInputs ? [ ]
     , extraBuildInputs ? [ ]
     , nodejs ? nodePkg
     , pnpm ? nodejs.pkgs.pnpm
     , pkg-config ? pkgConfigPkg
-    , nodeModulesPreBuild ? ""
-    , nodeModulesFixup ? "echo 'skipping fixupPhase'"
     , preBuild ? ""
     , ...
     }@attrs:
@@ -67,13 +63,8 @@ in
         nodejs
         pnpm
         pkg-config
-      ] ++ extraNativeBuildInputs ++ (optional copyNodeModules rsync);
+      ] ++ extraNativeBuildInputs;
       buildInputs = extraBuildInputs;
-      copyLink =
-        if copyNodeModules
-          then "rsync -a --chmod=u+w"
-          else "ln -s";
-      rsyncSlash = optionalString copyNodeModules "/";
       packageFilesWithoutLockfile =
         [
           { name = "package.json"; value = packageJSON; }
@@ -198,105 +189,7 @@ in
               processResultAllDeps = runCommand "${name}-dependency-list" {} ''
                   echo ${concatStringsSep " " (unique processResult.dependencyTarballs)} > $out
                 '';
-
-              pnpmStore = runCommand "${name}-pnpm-store"
-                {
-                  nativeBuildInputs = [ nodejs pnpm ];
-                } ''
-                mkdir -p $out
-
-                store=$(pnpm store path)
-                mkdir -p $(dirname $store)
-                ln -s $out $(pnpm store path)
-
-                pnpm store add ${concatStringsSep " " (unique processResult.dependencyTarballs)}
-              '';
-
-              nodeModules = stdenv.mkDerivation {
-                name = "${name}-node-modules";
-
-                inherit buildInputs;
-
-                nativeBuildInputs = [
-                  pnpm
-                  moreutils
-                  jq
-                  nodejs # used to patchShebang scripts
-                ];
-
-                strictDeps = true;
-
-                unpackPhase = concatStringsSep "\n"
-                  ( [ # components is an empty list for non workspace builds
-                      (forEachComponent (component: ''
-                      mkdir -p "${component}"
-                    '')) ] ++
-                    map
-                      (v:
-                        let
-                          nv = if isAttrs v then v else { name = "."; value = v; };
-                        in
-                        "cp -vr \"${nv.value}\" \"${nv.name}\""
-                      )
-                      ([{ name = "pnpm-lock.yaml"; value = passthru.patchedLockfileYaml; }]
-                      ++ packageFilesWithoutLockfile)
-                  );
-
-                preBuild = nodeModulesPreBuild;
-
-                buildPhase = ''
-                  runHook preBuild
-
-                  export HOME=$NIX_BUILD_TOP # Some packages need a writable HOME
-
-                  store=$(pnpm store path)
-                  mkdir -p $(dirname $store)
-
-                  cp -vf ${passthru.patchedLockfileYaml} pnpm-lock.yaml
-
-                  # solve pnpm: EACCES: permission denied, copyfile '/build/.pnpm-store
-                  ${if !copyPnpmStore
-                    then "ln -s"
-                    else "cp -RL"
-                  } ${passthru.pnpmStore} $(pnpm store path)
-
-                  ${optionalString copyPnpmStore "chmod -R +w $(pnpm store path)"}
-
-                  ${concatStringsSep "\n" (
-                    mapAttrsToList
-                      (n: v: ''export ${n}="${v}"'')
-                      installEnv
-                  )}
-
-                  pnpm install ${optionalString noDevDependencies "--prod"} \
-                    --ignore-scripts \
-                    --force \
-                    --frozen-lockfile
-
-                  runHook postBuild
-                '';
-
-                installPhase = ''
-                  runHook preInstall
-
-                  mkdir -p $out
-                  cp -r node_modules/. $out/node_modules
-                  ${forEachComponent (component: ''
-                    mkdir -p $out/"${component}"
-                    echo "copying ${component}/node_modules ..."
-                    cp -r "${component}/node_modules" $out/"${component}/node_modules" || true
-                  '')}
-
-                  runHook postInstall
-                '';
-
-                fixupPhase = ''
-                  ${nodeModulesFixup}
-                  patchShebangs --build $out/node_modules/{*,.*}
-                '';
-              };
             };
-
         })
         (attrs // { extraNodeModuleSources = null; installEnv = null; buildEnv = null;})
     );
