@@ -1,6 +1,8 @@
 { lib
 , stdenv
 , nodejs
+, jq
+, moreutils
 , rsync
 , pkg-config
 , callPackage
@@ -198,7 +200,13 @@ in
               nodeModules = stdenv.mkDerivation {
                 name = "${name}-node-modules";
 
-                inherit nativeBuildInputs buildInputs;
+                inherit buildInputs;
+
+                nativeBuildInputs = [
+                  pnpm
+                  moreutils
+                  jq
+                ];
 
                 strictDeps = true;
 
@@ -264,6 +272,18 @@ in
                   '')}
 
                   runHook postInstall
+                '';
+
+                fixupPhase = ''
+                  runHook preFixup
+
+                  # Remove timestamp and sort the json files
+                  rm -rf $out/{v3,v10}/tmp
+                  for f in $(find $out -name "*.json"); do
+                    jq --sort-keys "del(.. | .checkedAt?)" $f | sponge $f
+                  done
+
+                  runHook postFixup
                 '';
               };
             };
