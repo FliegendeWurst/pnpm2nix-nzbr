@@ -209,6 +209,7 @@ in
                   pnpm
                   moreutils
                   jq
+                  nodejs # used to patchShebang scripts
                 ];
 
                 strictDeps = true;
