@@ -51,6 +51,7 @@ in
     , pnpm ? nodejs.pkgs.pnpm
     , pkg-config ? pkgConfigPkg
     , nodeModulesPreBuild ? ""
+    , nodeModulesFixup ? "echo 'skipping fixupPhase'"
     , preBuild ? ""
     , ...
     }@attrs:
@@ -275,7 +276,7 @@ in
                   runHook postInstall
                 '';
 
-                dontFixup = true;
+                fixupPhase = nodeModulesFixup;
               };
             };
 
