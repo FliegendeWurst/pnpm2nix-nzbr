@@ -145,7 +145,10 @@ in
                 installEnv
             )}
 
-            pnpm install --stream ${optionalString noDevDependencies "--prod "}--frozen-lockfile --offline
+            pnpm install ${optionalString noDevDependencies "--prod"} \
+              --ignore-scripts \
+              --force \
+              --frozen-lockfile
 
             runHook postConfigure
           '';
