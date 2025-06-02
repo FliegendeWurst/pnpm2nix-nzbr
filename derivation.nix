@@ -280,7 +280,7 @@ in
                   # Remove timestamp and sort the json files
                   rm -rf $out/{v3,v10}/tmp
                   for f in $(find $out -name "*.json"); do
-                    jq --sort-keys "del(.. | .checkedAt?)" $f | sponge $f
+                    jq --sort-keys "del(.. | .checkedAt?)" $f | sponge $f || true
                   done
 
                   runHook postFixup
