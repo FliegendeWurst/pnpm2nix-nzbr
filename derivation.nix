@@ -239,7 +239,7 @@ in
                   store=$(pnpm store path)
                   mkdir -p $(dirname $store)
 
-                  cp -f ${passthru.patchedLockfileYaml} pnpm-lock.yaml
+                  cp -vf ${passthru.patchedLockfileYaml} pnpm-lock.yaml
 
                   # solve pnpm: EACCES: permission denied, copyfile '/build/.pnpm-store
                   ${if !copyPnpmStore
