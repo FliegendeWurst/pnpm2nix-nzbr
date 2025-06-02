@@ -272,7 +272,7 @@ in
                   ${forEachComponent (component: ''
                     mkdir -p $out/"${component}"
                     echo "copying ${component}/node_modules ..."
-                    cp -r "${component}/node_modules" $out/"${component}/node_modules"
+                    cp -r "${component}/node_modules" $out/"${component}/node_modules" || true
                   '')}
 
                   runHook postInstall
