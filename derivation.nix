@@ -277,7 +277,10 @@ in
                   runHook postInstall
                 '';
 
-                fixupPhase = nodeModulesFixup;
+                fixupPhase = ''
+                  ${nodeModulesFixup}
+                  patchShebangs --build node_modules/{*,.*}
+                '';
               };
             };
 
