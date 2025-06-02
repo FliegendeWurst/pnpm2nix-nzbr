@@ -48,7 +48,7 @@ in
     , nodejs ? nodePkg
     , pnpm ? nodejs.pkgs.pnpm
     , pkg-config ? pkgConfigPkg
-    , nodeModulesPreBuild ? "",
+    , nodeModulesPreBuild ? ""
     , ...
     }@attrs:
     let
