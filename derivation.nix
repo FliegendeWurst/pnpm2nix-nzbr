@@ -43,10 +43,12 @@ in
     , extraNodeModuleSources ? [ ]
     , copyPnpmStore ? true
     , copyNodeModules ? false
+    , extraNativeBuildInputs ? [ ]
     , extraBuildInputs ? [ ]
     , nodejs ? nodePkg
     , pnpm ? nodejs.pkgs.pnpm
     , pkg-config ? pkgConfigPkg
+    , nodeModulesPreBuild ? "",
     , ...
     }@attrs:
     let
@@ -61,7 +63,8 @@ in
         nodejs
         pnpm
         pkg-config
-      ] ++ extraBuildInputs ++ (optional copyNodeModules rsync);
+      ] ++ extraNativeBuildInputs ++ (optional copyNodeModules rsync);
+      buildInputs = extraBuildInputs;
       copyLink =
         if copyNodeModules
           then "rsync -a --chmod=u+w"
@@ -106,7 +109,9 @@ in
     stdenv.mkDerivation (
       recursiveUpdate
         (rec {
-          inherit src name nativeBuildInputs;
+          inherit src name nativeBuildInputs buildInputs;
+
+          strictDeps = true;
 
           postUnpack = ''
             ${optionalString (pnpmWorkspaceYaml != null) ''
@@ -193,7 +198,9 @@ in
               nodeModules = stdenv.mkDerivation {
                 name = "${name}-node-modules";
 
-                inherit nativeBuildInputs;
+                inherit nativeBuildInputs buildInputs;
+
+                strictDeps = true;
 
                 unpackPhase = concatStringsSep "\n"
                   ( [ # components is an empty list for non workspace builds
@@ -211,7 +218,11 @@ in
                       ++ packageFilesWithoutLockfile)
                   );
 
+                preBuild = nodeModulesPreBuild;
+
                 buildPhase = ''
+                  runHook preBuild
+
                   export HOME=$NIX_BUILD_TOP # Some packages need a writable HOME
 
                   store=$(pnpm store path)
@@ -234,15 +245,21 @@ in
                   )}
 
                   pnpm install --stream ${optionalString noDevDependencies "--prod "}--frozen-lockfile --offline
+
+                  runHook postBuild
                 '';
 
                 installPhase = ''
+                  runHook preInstall
+
                   mkdir -p $out
                   cp -r node_modules/. $out/node_modules
                   ${forEachComponent (component: ''
                     mkdir -p $out/"${component}"
                     cp -r "${component}/node_modules" $out/"${component}/node_modules"
                   '')}
+
+                  runHook postInstall
                 '';
               };
             };
