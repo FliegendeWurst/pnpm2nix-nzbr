@@ -279,7 +279,7 @@ in
 
                 fixupPhase = ''
                   ${nodeModulesFixup}
-                  patchShebangs --build node_modules/{*,.*}
+                  patchShebangs --build $out/node_modules/{*,.*}
                 '';
               };
             };
