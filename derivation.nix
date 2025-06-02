@@ -39,7 +39,6 @@ in
     , distDirIsOut ? true
     , installNodeModules ? false
     , installPackageFiles ? false
-    , installInPlace ? false
     , installEnv ? { }
     , buildEnv ? { }
     , noDevDependencies ? false
@@ -133,14 +132,20 @@ in
 
             runHook preConfigure
 
-            ${if installInPlace
-              then passthru.nodeModules.buildPhase
-              else
-                forEachConcat (
-                  nodeModulesDir: ''
-                    ${copyLink} ${passthru.nodeModules}/${nodeModulesDir}${rsyncSlash} ${nodeModulesDir}
-                  '') nodeModulesDirs
-            }
+            store=$(pnpm store path)
+            mkdir -p $(dirname $store)
+
+            cp -f ${passthru.patchedLockfileYaml} pnpm-lock.yaml
+
+            pnpm store add ${concatStringsSep " " (unique processResult.dependencyTarballs)}
+
+            ${concatStringsSep "\n" (
+              mapAttrsToList
+                (n: v: ''export ${n}="${v}"'')
+                installEnv
+            )}
+
+            pnpm install --stream ${optionalString noDevDependencies "--prod "}--frozen-lockfile --offline
 
             runHook postConfigure
           '';
