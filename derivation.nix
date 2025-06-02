@@ -257,9 +257,8 @@ in
 
                   pnpm install ${optionalString noDevDependencies "--prod"} \
                     --ignore-scripts \
-                    --stream \
-                    --frozen-lockfile \
-                    --offline
+                    --force \
+                    --frozen-lockfile
 
                   runHook postBuild
                 '';
