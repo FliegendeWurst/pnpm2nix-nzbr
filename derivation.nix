@@ -110,7 +110,7 @@ in
 
           postUnpack = ''
             ${optionalString (pnpmWorkspaceYaml != null) ''
-              cp ${pnpmWorkspaceYaml} pnpm-workspace.yaml
+              cp -v ${pnpmWorkspaceYaml} pnpm-workspace.yaml
             ''}
             ${forEachComponent (component:
               ''mkdir -p "${component}"'')
@@ -126,7 +126,7 @@ in
             store=$(pnpm store path)
             mkdir -p $(dirname $store)
 
-            cp -f ${passthru.patchedLockfileYaml} pnpm-lock.yaml
+            cp -fv ${passthru.patchedLockfileYaml} pnpm-lock.yaml
 
             pnpm store add $(cat ${passthru.processResultAllDeps})
 
@@ -181,14 +181,13 @@ in
               processResult = processLockfile { inherit registry noDevDependencies; lockfile = pnpmLockYaml; };
             in
             {
-              inherit attrs processResult;
+              inherit attrs;
 
-              patchedLockfile = processResult.patchedLockfile;
-              patchedLockfileYaml = writeText "pnpm-lock.yaml" (toJSON passthru.patchedLockfile);
+              patchedLockfileYaml = writeText "pnpm-lock.yaml" (toJSON processResult.patchedLockfile);
 
               processResultAllDeps = runCommand "${name}-dependency-list" {} ''
-                  echo ${concatStringsSep " " (unique processResult.dependencyTarballs)} > $out
-                '';
+                echo ${concatStringsSep " " (unique processResult.dependencyTarballs)} > $out
+              '';
             };
         })
         (attrs // { extraNodeModuleSources = null; installEnv = null; buildEnv = null;})

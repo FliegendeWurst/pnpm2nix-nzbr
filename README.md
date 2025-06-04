@@ -40,3 +40,8 @@ In addition to all arguments accepted by `stdenv.mkDerivation`, the `mkPnpmPacka
 | `extraBuildInputs`       | Additional entries for `buildInputs`                                        | `[]`                         |
 | `preBuild`               | Commands to execute before the main build phase                             | `""`                         |
 | `pkg-config`             | Override the pkg-config package that is used                                | `pkgs.pkg-config`            |
+
+## Internals
+
+The supplied `pnpmLockYaml` is processed using a lot of (slow) IFD logic.
+To cache those results more efficiently, pass it explicitly as `pnpmLockYaml = ./pnpm-lock.yaml`.
