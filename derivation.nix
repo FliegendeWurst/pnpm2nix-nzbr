@@ -185,6 +185,7 @@ in
 
               patchedLockfileYaml = writeText "pnpm-lock.yaml" (toJSON processResult.patchedLockfile);
 
+              # TODO: use writeText instead?
               processResultAllDeps = runCommand "${name}-dependency-list" {} ''
                 echo ${concatStringsSep " " (unique processResult.dependencyTarballs)} > $out
               '';
