@@ -41,6 +41,22 @@ in
     , installEnv ? { }
     , buildEnv ? { }
     , noDevDependencies ? false
+    # Platform filtering for optional dependencies (auto-detected from stdenv by default)
+    # Set to null to disable filtering, or override with specific platform strings
+    , targetOs ? (
+        if stdenv.hostPlatform.isLinux then "linux"
+        else if stdenv.hostPlatform.isDarwin then "darwin"
+        else if stdenv.hostPlatform.isWindows then "win32"
+        else if stdenv.hostPlatform.isFreeBSD then "freebsd"
+        else null
+      )
+    , targetCpu ? (
+        if stdenv.hostPlatform.isx86_64 then "x64"
+        else if stdenv.hostPlatform.isAarch64 then "arm64"
+        else if stdenv.hostPlatform.isx86 then "ia32"
+        else if stdenv.hostPlatform.isAarch32 then "arm"
+        else null
+      )
     , extraNodeModuleSources ? [ ]
     , copyNodeModules ? false
     , extraNativeBuildInputs ? [ ]
@@ -178,7 +194,7 @@ in
 
           passthru =
             let
-              processResult = processLockfile { inherit registry noDevDependencies; lockfile = pnpmLockYaml; };
+              processResult = processLockfile { inherit registry noDevDependencies targetOs targetCpu; lockfile = pnpmLockYaml; };
             in
             {
               inherit attrs;

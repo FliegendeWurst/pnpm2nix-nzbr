@@ -10,11 +10,25 @@ rec {
 
   parseLockfile = lockfile: builtins.fromJSON (readFile (runCommand "toJSON" { } "${remarshal}/bin/yaml2json ${lockfile} $out"));
 
-  processLockfile = { registry, lockfile, noDevDependencies }:
+  # targetOs/targetCpu: pnpm platform identifiers (e.g., "linux", "darwin", "win32" / "x64", "arm64", "ia32")
+  # Set to null to disable filtering for that dimension
+  processLockfile = { registry, lockfile, noDevDependencies, targetOs ? null, targetCpu ? null }:
     let
       splitVersion = name: splitString "@" (head (splitString "(" name));
       getVersion = name: last (splitVersion name);
       withoutVersion = name: concatStringsSep "@" (init (splitVersion name));
+
+      # Check if a package is compatible with the target platform
+      # A package is compatible if:
+      # 1. It has no os restriction, OR its os list includes targetOs (or targetOs is null)
+      # 2. It has no cpu restriction, OR its cpu list includes targetCpu (or targetCpu is null)
+      isPlatformCompatible = v:
+        let
+          osOk = targetOs == null || !(v ? os) || elem targetOs v.os;
+          cpuOk = targetCpu == null || !(v ? cpu) || elem targetCpu v.cpu;
+        in
+        osOk && cpuOk;
+
       switch = n: v: options:
         if ((length options) == 0)
         then throw "No matching case found, for n=${n} v=${builtins.toJSON v}!"
@@ -95,7 +109,10 @@ rec {
           mapAttrsToList
             findTarball
             (filterAttrs
-              (n: v: !noDevDependencies || !(v.dev or false))
+              (n: v:
+                (!noDevDependencies || !(v.dev or false)) &&
+                isPlatformCompatible v
+              )
               (parseLockfile lockfile).packages
             )
         );
@@ -103,6 +120,31 @@ rec {
       patchedLockfile =
         let
           orig = parseLockfile lockfile;
+          # Get the set of package names that are incompatible
+          incompatiblePackageNames = attrNames (filterAttrs (n: v: !isPlatformCompatible v) orig.packages);
+          # Filter packages
+          filteredPackages = filterAttrs (n: v: isPlatformCompatible v) orig.packages;
+          # Helper to filter dependency attrs, removing references to incompatible packages
+          filterDeps = deps:
+            if deps == null then null
+            else filterAttrs (name: version:
+              let
+                # Construct the package key as it appears in packages (name@version)
+                pkgKey = "${name}@${version}";
+              in
+              !elem pkgKey incompatiblePackageNames
+            ) deps;
+          # Filter snapshots to remove references to incompatible packages
+          filteredSnapshots =
+            if orig ? snapshots then
+              mapAttrs (n: v:
+                v // (
+                  optionalAttrs (v ? dependencies) { dependencies = filterDeps v.dependencies; }
+                ) // (
+                  optionalAttrs (v ? optionalDependencies) { optionalDependencies = filterDeps v.optionalDependencies; }
+                )
+              ) orig.snapshots
+            else {};
         in
         orig // {
           packages = mapAttrs
@@ -115,8 +157,8 @@ rec {
                 }
               )
             )
-            orig.packages;
-
+            filteredPackages;
+          snapshots = filteredSnapshots;
         };
     };
 
