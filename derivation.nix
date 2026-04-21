@@ -1,6 +1,7 @@
 { lib
 , stdenv
 , nodejs
+, pnpm
 , jq
 , moreutils
 , pkg-config
@@ -13,18 +14,21 @@
 with builtins; with lib; with callPackage ./lockfile.nix { };
 let
   nodePkg = nodejs;
+  pnpmPkg = pnpm;
   pkgConfigPkg = pkg-config;
 in
 {
   mkPnpmPackage =
     { workspace ? null
-    , components ? []
-    , src ? if (workspace != null && components != []) then workspace else null
+    , components ? [ ]
+    , src ? if (workspace != null && components != [ ]) then workspace else null
     , packageJSON ? src + "/package.json"
-    , componentPackageJSONs ? map (c: {
-        name = "${c}/package.json";
-        value = src + "/${c}/package.json";
-      }) components
+    , componentPackageJSONs ? map
+        (c: {
+          name = "${c}/package.json";
+          value = src + "/${c}/package.json";
+        })
+        components
     , pnpmLockYaml ? src + "/pnpm-lock.yaml"
     , pnpmWorkspaceYaml ? (if workspace == null then null else workspace + "/pnpm-workspace.yaml")
     , pname ? (fromJSON (readFile packageJSON)).name
@@ -34,7 +38,7 @@ in
     , script ? "build"
     , scriptFull ? null
     , distDir ? "dist"
-    , distDirs ? (if workspace == null then [distDir] else (map (c: "${c}/dist") components))
+    , distDirs ? (if workspace == null then [ distDir ] else (map (c: "${c}/dist") components))
     , distDirIsOut ? true
     , installNodeModules ? false
     , installPackageFiles ? false
@@ -46,7 +50,7 @@ in
     , extraNativeBuildInputs ? [ ]
     , extraBuildInputs ? [ ]
     , nodejs ? nodePkg
-    , pnpm ? nodejs.pkgs.pnpm
+    , pnpm ? pnpmPkg
     , pkg-config ? pkgConfigPkg
     , preBuild ? ""
     , ...
@@ -54,7 +58,7 @@ in
     let
       # Flag that can be computed from arguments, indicating a workspace was
       # supplied. Only used in these let bindings.
-      isWorkspace = workspace != null && components != [];
+      isWorkspace = workspace != null && components != [ ];
       # Utility functions
       forEachConcat = f: xs: concatStringsSep "\n" (map f xs);
       forEachComponent = f: forEachConcat f components;
@@ -71,28 +75,29 @@ in
         ] ++ componentPackageJSONs ++ computedNodeModuleSources;
       computedNodeModuleSources =
         (if pnpmWorkspaceYaml == null
-          then []
-          else [
-            {name = "pnpm-workspace.yaml"; value = pnpmWorkspaceYaml;}
-          ]
+        then [ ]
+        else [
+          { name = "pnpm-workspace.yaml"; value = pnpmWorkspaceYaml; }
+        ]
         ) ++ extraNodeModuleSources;
       # Computed values that loop over something
       computedDistFiles =
         let
-          packageFileNames = ["pnpm-lock.yaml"] ++
+          packageFileNames = [ "pnpm-lock.yaml" ] ++
             map ({ name, ... }: name) packageFilesWithoutLockfile;
         in
-          distDirs ++
-            optionals installNodeModules nodeModulesDirs ++
-            optionals installPackageFiles packageFileNames;
+        distDirs ++
+        optionals installNodeModules nodeModulesDirs ++
+        optionals installPackageFiles packageFileNames;
       nodeModulesDirs =
         if isWorkspace then
-          ["node_modules"] ++ (map (c: "${c}/node_modules") components)
-        else ["node_modules"];
-      filterString = concatStringsSep " " (
-        ["--recursive" "--stream"] ++
-        map (c: "--filter ./${c}") components
-      ) + " ";
+          [ "node_modules" ] ++ (map (c: "${c}/node_modules") components)
+        else [ "node_modules" ];
+      filterString = concatStringsSep " "
+        (
+          [ "--recursive" "--stream" ] ++
+            map (c: "--filter ./${c}") components
+        ) + " ";
       buildScripts = if scriptFull != null then scriptFull else ''
         pnpm run ${optionalString isWorkspace filterString}${script}
       '';
@@ -186,11 +191,11 @@ in
               patchedLockfileYaml = writeText "pnpm-lock.yaml" (toJSON processResult.patchedLockfile);
 
               # TODO: use writeText instead?
-              processResultAllDeps = runCommand "${name}-dependency-list" {} ''
+              processResultAllDeps = runCommand "${name}-dependency-list" { } ''
                 echo ${concatStringsSep " " (unique processResult.dependencyTarballs)} > $out
               '';
             };
         })
-        (attrs // { extraNodeModuleSources = null; installEnv = null; buildEnv = null;})
+        (attrs // { extraNodeModuleSources = null; installEnv = null; buildEnv = null; })
     );
 }
