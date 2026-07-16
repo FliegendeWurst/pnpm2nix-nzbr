@@ -89,6 +89,11 @@ rec {
               );
           }
           {
+            # Handles standard registry packages. In lockfile v9 (pnpm 10)
+            # packages in the `packages` section only carry `resolution.integrity`
+            # with no explicit tarball URL, so the URL is reconstructed from the
+            # package name and version. Earlier lockfile versions with explicit
+            # tarball URLs are caught by the case above.
             case = true;
             result =
               let
@@ -153,7 +158,16 @@ rec {
                 if noDevDependencies && (v.dev or false)
                 then { resolution = { }; }
                 else {
-                  resolution.tarball = "file:${findTarball n v}";
+                  # Preserve integrity alongside the injected tarball path.
+                  # pnpm v9 uses a content-addressable store indexed by integrity
+                  # hash, so keeping it lets `pnpm store add` pre-population work
+                  # without internet access. Non-registry packages (git, etc.) have
+                  # no integrity field and get only the tarball path.
+                  resolution =
+                    (if (v.resolution or { }) ? integrity
+                    then { inherit (v.resolution) integrity; }
+                    else { })
+                    // { tarball = "file:${findTarball n v}"; };
                 }
               )
             )
