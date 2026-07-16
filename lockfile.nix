@@ -54,13 +54,6 @@ rec {
               );
           }
           {
-            case = hasAttrByPath [ "resolution" "tarball" ] v && hasAttrByPath [ "resolution" "integrity" ] v;
-            result = fetchurl {
-              url = v.resolution.tarball;
-              ${head (splitString "-" v.resolution.integrity)} = v.resolution.integrity;
-            };
-          }
-          {
             case = hasPrefix "https://codeload.github.com" (v.resolution.tarball or "");
             result =
               let
@@ -73,6 +66,13 @@ rec {
                   shallow = true;
                 }
               );
+          }
+          {
+            case = hasAttrByPath [ "resolution" "tarball" ] v && hasAttrByPath [ "resolution" "integrity" ] v;
+            result = fetchurl {
+              url = v.resolution.tarball;
+              ${head (splitString "-" v.resolution.integrity)} = v.resolution.integrity;
+            };
           }
           {
             case = (v ? id);
