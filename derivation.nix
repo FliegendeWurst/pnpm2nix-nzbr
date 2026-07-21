@@ -124,6 +124,9 @@ in
 
           strictDeps = true;
 
+          # avoid ERR_PNPM_RESOLUTION_SHAPE_MISMATCH errors
+          env.PNPM_CONFIG_TRUST_LOCKFILE = "true";
+
           postUnpack = ''
             ${optionalString (pnpmWorkspaceYaml != null) ''
               cp -v ${pnpmWorkspaceYaml} pnpm-workspace.yaml
